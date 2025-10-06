@@ -1,0 +1,10 @@
+data/
+outputs/
+.ipynb_checkpoints/
+*.h5ad
+*.h5
+*.loom
+*.zarr
+scanpy-starter/
+*.zip
+.Rproj.user
