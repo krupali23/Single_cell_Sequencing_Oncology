@@ -28,6 +28,9 @@ SC_EXPR_CSV     = os.path.join(DATA_DIR, "sc_expr.csv")
 MARKERS_DIR         = os.path.join(DATA_DIR, "markers")
 MARKERS_TOP50_DIR   = os.path.join(MARKERS_DIR, "per_group_top50")  # << your folder
 
+# Intro slides folder (put your JPG/PNG images here)
+SLIDES_DIR = os.path.join(DATA_DIR, "slides_intro")
+
 # ================== HERO + TOP NAV ==================
 st.markdown(
     """
@@ -368,7 +371,7 @@ def kb_answer(question: str, page: str | None = None) -> str:
         return ("**Features** are the numeric inputs to the model (per patient). "
                 "Examples: proportions of cell types, marker scores, clinical covariates.")
     if any(k in q for k in ["f1", "f1-score", "f1 score"]):
-        return ("**F1-score** = harmonic mean of precision and recall (2·P·R/(P+R)). "
+        return ("**F1-score** = harmonic mean of precision and recall (2·P·R/(P+P)). "
                 "Balances false positives and false negatives.")
     if any(k in q for k in ["sensitivity", "recall", "tpr", "true positive rate"]):
         return ("**Sensitivity (Recall, TPR)** = TP/(TP+FN). Of the true responders, how many did we catch?")
@@ -1062,45 +1065,206 @@ elif page == "Chat":
     for who, msg in st.session_state["chat"]:
         st.markdown(f"**{who}:** {msg}")
 
-# ================== PAGE: BACKGROUND ==================
+# ================== PAGE: BACKGROUND (INTRO SLIDES + APP OVERVIEW) ==================
 elif page == "Background":
-    st.header("📘 Background")
+    st.header("📘 Introduction")
+
+    # ---- CSS for integrated slide card (image + text in one card)
     st.markdown("""
-### Immunotherapy: Promise and Challenges
-- People’s immune systems differ by **genetics, lifestyle, infections, and environment**.  
-- **Immunotherapy** helps the immune system recognize and kill tumor cells.  
-- **Not everyone responds** — some benefit strongly, others little or none.  
-- Understanding **why** is a key question in cancer research.
+    <style>
+      .slide-card{
+        display:flex; gap:24px; align-items:center;
+        background:#ffffff; border-radius:18px; padding:18px 20px;
+        border:1px solid #e6eef7; box-shadow:0 6px 22px rgba(0,0,0,0.06);
+      }
+      .slide-img{
+        width:58%; height:430px; border-radius:14px; overflow:hidden;
+        background:#eef3fb;
+      }
+      .slide-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+      .slide-text{ flex:1; font-size:1.12rem; line-height:1.65; }
+      .slide-text h2{ font-size:1.9rem; margin:0 0 10px 0; }
+      .slide-text ul{ margin:0 0 0 1.1rem; }
+      .slide-controls{ display:flex; gap:14px; margin-top:10px; }
+    </style>
+    """, unsafe_allow_html=True)
 
-### Why we need data and better tools
-- Modern genomics and **single-cell** profiling show which cells/genes are **active or silent** per patient.  
-- This creates **millions of measurements** — powerful, but hard to interpret fast.  
-- Clinicians need **clear, actionable** summaries.
+    # ---- slide builder (returns list of (title, img_path, markdown_text))
+    def build_intro_slides(slides_dir: str):
+        import glob
+        imgs = glob.glob(os.path.join(slides_dir, "*.png")) + \
+               glob.glob(os.path.join(slides_dir, "*.jpg")) + \
+               glob.glob(os.path.join(slides_dir, "*.jpeg"))
+        byname = {os.path.basename(p).lower(): p for p in imgs}
 
-### What this app does
-- Turns complex patient & single-cell data into **clean visuals**.  
-- Highlights which **immune cells** are active or exhausted.  
-- Compares **responders vs non-responders** (e.g., CD8 T cells).  
-- Surfaces **biological pathways** linked to success or resistance.  
-- Provides **AI predictions** with explanations.
+        def pick(*keys):
+            for k in keys:
+                for name, path in byname.items():
+                    if k in name:
+                        return path
+            return None
 
-### Why it matters
-- **Better decisions:** Predict who is likely to respond and adjust early.  
-- **Less trial-and-error:** Save time, cost, and side-effects.  
-- **Deeper biology:** Reveal cell types and pathways that drive outcomes.  
-- **Personalized care:** Match therapy to each patient’s unique immune profile.
+        img_world  = pick("world")
+        img_doctor = pick("doctor")
+        img_dna    = pick("dna")
 
-### Page guide (what to look for)
-- **📊 Performance** — Metrics, ROC/PR curves, confusion matrix.  
-  *Tip:* Tune the threshold to balance precision vs recall.  
-- **🗺️ Cell Map** — UMAP colored by cluster, responder status, or gene expression.  
-  *Tip:* Are responder-enriched clusters spatially coherent?  
-- **🧪 Gene Explorer** — Violin/box by group, cluster means, heatmaps, UMAP coloring, co-expression.  
-  *Tip:* Check CD8 cytotoxic (**GZMB/PRF1**) vs memory-like (**IL7R/TCF7**) genes.  
-- **🆚 Comparison** — One patient vs group means with a traffic-light prediction.  
-  *Tip:* Inspect features driving the patient’s deviation.  
-- **🧠 What Drives Response** — SHAP/model importances, **Hallmark Explorer**, and optional **CD8 GSEA**.
-""")
+        text1 = (
+            "## Immunotherapy Response Explorer\n"
+            "- Cancer is still one of the leading causes of death.\n"
+            "- **~20 million** people diagnosed with cancer each year\n"
+            "- **9.7 million** deaths annually\n"
+            "- **~35 million** new cases projected each year by **2050**\n\n"
+            "*That’s not just numbers — it’s families, choices, and time we can’t waste.*"
+        )
+        text2 = (
+            "### The Current Reality\n"
+            "Treatments like immunotherapy can be life-saving but are also **painful** and carry side effects: fatigue, "
+            "nausea, hair loss, infections, and weakened immunity.\n\n"
+            "- Not every patient responds to these treatments.\n"
+            "- Doctors often try different treatments repeatedly, causing more suffering."
+        )
+        text3 = (
+            "### What If We Knew Beforehand?\n"
+            "Imagine if we could predict which patients will respond to immunotherapy.\n\n"
+            "This would:\n"
+            "- **Reduce** patient suffering\n"
+            "- **Avoid** unnecessary side effects\n"
+            "- **Save** critical time in cancer treatment\n"
+            "- Make **personalized** treatment possible\n\n"
+            "To address this, we built an app that turns complex immune-cell and gene data into a **clear, explainable** "
+            "prediction of who is more likely to benefit from immunotherapy."
+        )
+
+        slides = [
+            ("The Scale of the Problem", img_world,  text1),
+            ("Why It’s Hard Today",      img_doctor, text2),
+            ("Imagine + Our Solution",   img_dna,    text3),
+        ]
+        return slides
+
+    def encode_image_b64(path: str):
+        if not path or not os.path.exists(path): return None, None
+        ext = os.path.splitext(path)[1].lower()
+        mime = "jpeg" if ext in [".jpg", ".jpeg"] else "png"
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        return mime, b64
+
+    def strip_first_heading(md: str) -> str:
+        lines = (md or "").strip().splitlines()
+        if lines and (lines[0].startswith("##") or lines[0].startswith("###")):
+            return "\n".join(lines[1:])
+        return md
+
+    def md_to_html(md: str) -> str:
+        """Very light markdown → HTML for headings/bullets/paragraphs."""
+        lines = (md or "").strip().splitlines()
+        html, in_ul = [], False
+        for line in lines:
+            if line.startswith("## "):
+                if in_ul: html.append("</ul>"); in_ul=False
+                html.append(f"<h2>{line[3:].strip()}</h2>")
+            elif line.startswith("### "):
+                if in_ul: html.append("</ul>"); in_ul=False
+                html.append(f"<h3>{line[4:].strip()}</h3>")
+            elif line.strip().startswith("- "):
+                if not in_ul:
+                    html.append("<ul>"); in_ul=True
+                html.append(f"<li>{line.strip()[2:].strip()}</li>")
+            elif line.strip()=="":
+                if in_ul: html.append("</ul>"); in_ul=False
+                html.append("<p>&nbsp;</p>")
+            else:
+                if in_ul: html.append("</ul>"); in_ul=False
+                html.append(f"<p>{line.strip()}</p>")
+        if in_ul: html.append("</ul>")
+        return "\n".join(html)
+
+    slides = build_intro_slides(SLIDES_DIR)
+
+    if "intro_idx" not in st.session_state:
+        st.session_state["intro_idx"] = 0
+
+    any_img = any((p and os.path.exists(p)) for _, p, _ in slides)
+    if not any_img:
+        st.warning(f"No images found in {SLIDES_DIR}. Add JPG/PNG files to show slide images. "
+                   "Text slides are still displayed below.")
+
+    # Ensure index in range
+    idx = max(0, min(st.session_state["intro_idx"], len(slides) - 1))
+    title, img_path, md_text = slides[idx]
+    mime, b64 = encode_image_b64(img_path)
+    body_html = md_to_html(strip_first_heading(md_text))
+
+    # Render single integrated slide card
+    if b64:
+        st.markdown(
+            f"""
+            <div class="slide-card">
+              <div class="slide-img">
+                <img src="data:image/{mime};base64,{b64}" alt="{title}" />
+              </div>
+              <div class="slide-text">
+                <h2>{title}</h2>
+                {body_html}
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f"""
+            <div class="slide-card">
+              <div class="slide-img" style="display:flex;align-items:center;justify-content:center;color:#667;">
+                <span>Image not found</span>
+              </div>
+              <div class="slide-text">
+                <h2>{title}</h2>
+                {body_html}
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # Prev / Next controls (thumbnails removed)
+    c1, c2, c3 = st.columns([0.24, 0.24, 0.52])
+    with c1:
+        if st.button("⬅️ Previous", use_container_width=True, disabled=(idx == 0)):
+            st.session_state["intro_idx"] = idx - 1
+            st.rerun()
+    with c2:
+        if st.button("Next ➡️", use_container_width=True, disabled=(idx == len(slides) - 1)):
+            st.session_state["intro_idx"] = idx + 1
+            st.rerun()
+    with c3:
+        st.caption(f"Slide {idx+1} / {len(slides)}")
+
+    # ------- What this app does (before Page guide) -------
+    st.markdown("### What this app does")
+    st.markdown(
+        "- Turns complex patient & single-cell data into **clean visuals**.\n"
+        "- Highlights which **immune cells** are **active** or **exhausted**.\n"
+        "- Compares **responders vs non-responders** (e.g., **CD8 T cells**).\n"
+        "- Surfaces **biological pathways** linked to success or resistance.\n"
+        "- Provides **AI predictions** with explanations."
+    )
+
+    # ------- Page guide (kept) -------
+    st.markdown("### Page guide (what to look for)")
+    st.markdown(
+        "- **📊 Performance** — Metrics, ROC/PR curves, confusion matrix.  \n"
+        "  *Tip:* Tune the threshold to balance precision vs recall.  \n"
+        "- **🗺️ Cell Map** — UMAP colored by cluster, responder status, or gene expression.  \n"
+        "  *Tip:* Are responder-enriched clusters spatially coherent?  \n"
+        "- **🧪 Gene Explorer** — Violin/box by group, cluster means, heatmaps, UMAP coloring, co-expression.  \n"
+        "  *Tip:* Check CD8 cytotoxic (**GZMB/PRF1**) vs memory-like (**IL7R/TCF7**) genes.  \n"
+        "- **🆚 Comparison** — One patient vs group means with a traffic-light prediction.  \n"
+        "  *Tip:* Inspect features driving the patient’s deviation.  \n"
+        "- **🧠 What Drives Response** — SHAP/model importances, **Hallmark Explorer**, and optional **CD8 GSEA**."
+    )
+
     render_page_chat("Background")
 
 # ================== PAGE: SUMMARY ==================
@@ -1120,6 +1284,9 @@ By studying the immune system at the level of single cells, we can:
 This approach moves us closer to **personalized medicine** — where each patient gets the treatment
 that fits their biology, not a one-size-fits-all approach.
 """)
+    # Thank you at the end (a bit larger)
+    st.markdown("<h2 style='text-align:center; margin-top: 1.25rem;'>Thank you</h2>", unsafe_allow_html=True)
+
     render_page_chat("Summary")
 
 # ================== REPORT EXPORT (appears on all pages) ==================
